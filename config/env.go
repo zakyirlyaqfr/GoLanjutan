@@ -14,6 +14,7 @@ type Env struct {
 	DBPassword string
 	DBName     string
 	ServerPort string
+	JWTSecret  string
 }
 
 var AppEnv *Env
@@ -30,6 +31,7 @@ func LoadEnv() {
 		DBPassword: getEnv("DB_PASSWORD", "password"),
 		DBName:     getEnv("DB_NAME", "dbminggu4"),
 		ServerPort: getEnv("SERVER_PORT", "3000"),
+		JWTSecret:  getEnv("JWT_SECRET", "golanjutan"),
 	}
 }
 
@@ -39,4 +41,3 @@ func getEnv(key, fallback string) string {
 	}
 	return fallback
 }
-

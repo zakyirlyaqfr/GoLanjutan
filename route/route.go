@@ -8,7 +8,6 @@ import (
 	"golanjutan/middleware"
 
 	"strconv"
-	// "time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -19,21 +18,37 @@ func Setup(app *fiber.App) {
 	// repositories
 	alumniRepo := repository.NewAlumniRepository(database.DB)
 	pekerjaanRepo := repository.NewPekerjaanRepository(database.DB)
+	userRepo := repository.NewUserRepository(database.DB)
 
 	// services
 	alumniSvc := service.NewAlumniService(alumniRepo)
 	pekerjaanSvc := service.NewPekerjaanService(pekerjaanRepo)
+	authSvc := service.NewAuthService(userRepo)
+
+	// auth routes
+	auth := api.Group("/auth")
+	auth.Post("/login", func(c *fiber.Ctx) error {
+		var req model.LoginRequest
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid body")
+		}
+		res, err := authSvc.Login(req)
+		if err != nil {
+			return fiber.NewError(fiber.StatusUnauthorized, err.Error())
+		}
+		return c.JSON(fiber.Map{"success": true, "data": res})
+	})
 
 	// alumni routes
 	alumni := api.Group("/alumni", middleware.Cors())
-	alumni.Get("/", func(c *fiber.Ctx) error {
+	alumni.Get("/", middleware.Protected(), func(c *fiber.Ctx) error {
 		res, err := alumniSvc.GetAll()
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 		return c.JSON(fiber.Map{"success": true, "data": res})
 	})
-	alumni.Get("/:id", func(c *fiber.Ctx) error {
+	alumni.Get("/:id", middleware.Protected(), func(c *fiber.Ctx) error {
 		id, err := strconv.Atoi(c.Params("id"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "id invalid")
@@ -44,7 +59,7 @@ func Setup(app *fiber.App) {
 		}
 		return c.JSON(fiber.Map{"success": true, "data": res})
 	})
-	alumni.Post("/", func(c *fiber.Ctx) error {
+	alumni.Post("/", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
 		var req model.CreateAlumniRequest
 		if err := c.BodyParser(&req); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid body")
@@ -56,7 +71,7 @@ func Setup(app *fiber.App) {
 		newAlumni, _ := alumniSvc.GetByID(id)
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "data": newAlumni})
 	})
-	alumni.Put("/:id", func(c *fiber.Ctx) error {
+	alumni.Put("/:id", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
 		id, err := strconv.Atoi(c.Params("id"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "id invalid")
@@ -71,7 +86,7 @@ func Setup(app *fiber.App) {
 		updated, _ := alumniSvc.GetByID(id)
 		return c.JSON(fiber.Map{"success": true, "data": updated})
 	})
-	alumni.Delete("/:id", func(c *fiber.Ctx) error {
+	alumni.Delete("/:id", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
 		id, err := strconv.Atoi(c.Params("id"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "id invalid")
@@ -84,14 +99,14 @@ func Setup(app *fiber.App) {
 
 	// pekerjaan routes
 	pekerjaan := api.Group("/pekerjaan", middleware.Cors())
-	pekerjaan.Get("/", func(c *fiber.Ctx) error {
+	pekerjaan.Get("/", middleware.Protected(), func(c *fiber.Ctx) error {
 		res, err := pekerjaanSvc.GetAll()
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 		return c.JSON(fiber.Map{"success": true, "data": res})
 	})
-	pekerjaan.Get("/:id", func(c *fiber.Ctx) error {
+	pekerjaan.Get("/:id", middleware.Protected(), func(c *fiber.Ctx) error {
 		id, err := strconv.Atoi(c.Params("id"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "id invalid")
@@ -102,7 +117,7 @@ func Setup(app *fiber.App) {
 		}
 		return c.JSON(fiber.Map{"success": true, "data": res})
 	})
-	pekerjaan.Get("/alumni/:alumni_id", func(c *fiber.Ctx) error {
+	pekerjaan.Get("/alumni/:alumni_id", middleware.Protected(), func(c *fiber.Ctx) error {
 		alumniID, err := strconv.Atoi(c.Params("alumni_id"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "alumni_id invalid")
@@ -113,7 +128,7 @@ func Setup(app *fiber.App) {
 		}
 		return c.JSON(fiber.Map{"success": true, "data": res})
 	})
-	pekerjaan.Post("/", func(c *fiber.Ctx) error {
+	pekerjaan.Post("/", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
 		var req model.CreatePekerjaanRequest
 		if err := c.BodyParser(&req); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid body")
@@ -125,7 +140,7 @@ func Setup(app *fiber.App) {
 		newPekerjaan, _ := pekerjaanSvc.GetByID(id)
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "data": newPekerjaan})
 	})
-	pekerjaan.Put("/:id", func(c *fiber.Ctx) error {
+	pekerjaan.Put("/:id", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
 		id, err := strconv.Atoi(c.Params("id"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "id invalid")
@@ -140,7 +155,7 @@ func Setup(app *fiber.App) {
 		updated, _ := pekerjaanSvc.GetByID(id)
 		return c.JSON(fiber.Map{"success": true, "data": updated})
 	})
-	pekerjaan.Delete("/:id", func(c *fiber.Ctx) error {
+	pekerjaan.Delete("/:id", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
 		id, err := strconv.Atoi(c.Params("id"))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "id invalid")
