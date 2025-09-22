@@ -23,7 +23,7 @@ func Setup(app *fiber.App) {
 	// services
 	alumniSvc := service.NewAlumniService(alumniRepo)
 	pekerjaanSvc := service.NewPekerjaanService(pekerjaanRepo)
-	authSvc := service.NewAuthService(userRepo)
+	authService := service.NewAuthService(*userRepo) // Pass userRepo as a value if NewAuthService expects repository.UserRepository, or update NewAuthService to accept *repository.UserRepository if needed
 
 	// auth routes
 	auth := api.Group("/auth")
@@ -32,7 +32,7 @@ func Setup(app *fiber.App) {
 		if err := c.BodyParser(&req); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid body")
 		}
-		res, err := authSvc.Login(req)
+		res, err := authService.Login(req.Username, req.Password)
 		if err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 		}

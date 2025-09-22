@@ -1,66 +1,48 @@
 package service
 
-
 import (
-"errors"
-"time"
+	"errors"
+	"time"
 
-
-"golanjutan/app/model"
-"golanjutan/app/repository"
-"golanjutan/config"
-
-
-"golang.org/x/crypto/bcrypt"
-"github.com/golang-jwt/jwt/v5"
+	"golanjutan/app/repository"
+	"golanjutan/utils"
 )
 
-
 type AuthService struct {
-UserRepo *repository.UserRepository
+	UserRepo repository.UserRepository
 }
 
-
-func NewAuthService(ur *repository.UserRepository) *AuthService {
-return &AuthService{UserRepo: ur}
+func NewAuthService(repo repository.UserRepository) *AuthService {
+    return &AuthService{
+        UserRepo: repo,
+    }
 }
 
+func (s *AuthService) Login(username, password string) (string, error) {
+	user, err := s.UserRepo.GetByUsername(username)
+	if err != nil {
+		return "", errors.New("username atau password salah")
+	}
 
-func (s *AuthService) Login(req model.LoginRequest) (*model.LoginResponse, error) {
-user, err := s.UserRepo.GetByUsername(req.Username)
-if err != nil {
-return nil, errors.New("username atau password salah")
-}
-// password stored may be pgcrypto crypt result or bcrypt; try bcrypt first
-if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-// try pgcrypto crypt check is not possible here; assume bcrypt only for Go-based seeder
-return nil, errors.New("username atau password salah")
-}
+	if !utils.CheckPassword(user.Password, password) {
+		return "", errors.New("username atau password salah")
+	}
 
+	token, err := utils.GenerateJWT(user.Username, user.Role, time.Hour*24)
+	if err != nil {
+		return "", err
+	}
 
-// create token
-secret := config.AppEnv.JWTSecret
-claims := jwt.MapClaims{
-"user_id": user.ID,
-"username": user.Username,
-"role": user.Role,
-"exp": time.Now().Add(24 * time.Hour).Unix(),
-}
-t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-signed, err := t.SignedString([]byte(secret))
-if err != nil {
-return nil, err
-}
-user.Password = ""
-return &model.LoginResponse{Token: signed, User: user}, nil
+	return token, nil
 }
 
+func (s *AuthService) Register(username, password, role string) error {
+    hashed, err := utils.HashPassword(password)
+    if err != nil {
+        return err
+    }
+	// Sekarang asumsi UserRepo.Create() return-nya hanya error
+	_, err = s.UserRepo.Create(username, hashed, role)
+	return err
+}
 
-// helper to create user with bcrypt hashed password (for seeding via Go)
-func (s *AuthService) CreateUser(username, password, role string) (int, error) {
-h, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-if err != nil {
-return 0, err
-}
-return s.UserRepo.Create(username, string(h), role)
-}

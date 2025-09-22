@@ -2,6 +2,7 @@ package main
 
 import (
 	"golanjutan/config"
+	"golanjutan/utils"
 	"golanjutan/database"
 	"golanjutan/route"
 	"log"
@@ -10,20 +11,28 @@ import (
 )
 
 func main() {
-	// load env & init
+	// 1. Load environment variables terlebih dahulu
 	config.LoadEnv()
+
+	// 2. Inisialisasi logger (opsional, tergantung kebutuhan)
 	config.InitLogger()
 
-	// connect db
+	// 3. Inisialisasi JWT secret setelah env diload
+	utils.InitJWT(config.AppEnv.JWTSecret)
+
+	// 4. Koneksi ke database
 	database.Connect()
 
-	// create fiber app
+	// 5. Buat Fiber app
 	app := fiber.New(config.NewFiberConfig())
 
-	// setup routes
+	// 6. Setup semua route
 	route.Setup(app)
 
-	// run
+	// 7. Jalankan server
 	port := config.AppEnv.ServerPort
+	if port == "" {
+		port = "8080" // fallback default port
+	}
 	log.Fatal(app.Listen(":" + port))
 }
