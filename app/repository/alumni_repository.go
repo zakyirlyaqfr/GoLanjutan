@@ -88,3 +88,48 @@ func (r *AlumniRepository) Delete(id int) error {
 	_, err := r.DB.Exec(`DELETE FROM alumni WHERE id = $1`, id)
 	return err
 }
+
+// repository/alumni_repository.go
+func (r *AlumniRepository) GetAllWithFilter(limit, offset int, sortBy, sortOrder, search string) ([]model.Alumni, error) {
+	query := `
+		SELECT id, nim, nama, jurusan, angkatan, tahun_lulus, email, no_telepon, alamat, created_at, updated_at
+		FROM alumni
+		WHERE nama ILIKE $1 OR jurusan ILIKE $1 OR nim ILIKE $1
+		ORDER BY ` + sortBy + ` ` + sortOrder + `
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := r.DB.Query(query, "%"+search+"%", limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.Alumni
+	for rows.Next() {
+		var a model.Alumni
+		var noTel, alamat sql.NullString
+		if err := rows.Scan(&a.ID, &a.NIM, &a.Nama, &a.Jurusan, &a.Angkatan, &a.TahunLulus,
+			&a.Email, &noTel, &alamat, &a.CreatedAt, &a.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if noTel.Valid {
+			a.NoTelepon = &noTel.String
+		}
+		if alamat.Valid {
+			a.Alamat = &alamat.String
+		}
+		list = append(list, a)
+	}
+	return list, nil
+}
+
+func (r *AlumniRepository) Count(search string) (int, error) {
+	var total int
+	err := r.DB.QueryRow(`
+		SELECT COUNT(*) 
+		FROM alumni
+		WHERE nama ILIKE $1 OR jurusan ILIKE $1 OR nim ILIKE $1
+	`, "%"+search+"%").Scan(&total)
+	return total, err
+}

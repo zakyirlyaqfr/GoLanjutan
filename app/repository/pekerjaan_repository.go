@@ -158,3 +158,54 @@ func (r *PekerjaanRepository) Delete(id int) error {
 	_, err := r.DB.Exec(`DELETE FROM pekerjaan_alumni WHERE id = $1`, id)
 	return err
 }
+
+// repository/pekerjaan_repository.go
+func (r *PekerjaanRepository) GetAllWithFilter(limit, offset int, sortBy, sortOrder, search string) ([]model.PekerjaanAlumni, error) {
+	query := `
+		SELECT id, alumni_id, nama_perusahaan, posisi_jabatan, bidang_industri, lokasi_kerja, gaji_range,
+		tanggal_mulai_kerja, tanggal_selesai_kerja, status_pekerjaan, deskripsi_pekerjaan, created_at, updated_at
+		FROM pekerjaan_alumni
+		WHERE nama_perusahaan ILIKE $1 OR posisi_jabatan ILIKE $1 OR bidang_industri ILIKE $1
+		ORDER BY ` + sortBy + ` ` + sortOrder + `
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := r.DB.Query(query, "%"+search+"%", limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.PekerjaanAlumni
+	for rows.Next() {
+		var p model.PekerjaanAlumni
+		var gaji, deskripsi sql.NullString
+		var tanggalSelesai sql.NullTime
+		if err := rows.Scan(&p.ID, &p.AlumniID, &p.NamaPerusahaan, &p.PosisiJabatan, &p.BidangIndustri,
+			&p.LokasiKerja, &gaji, &p.TanggalMulaiKerja, &tanggalSelesai,
+			&p.StatusPekerjaan, &deskripsi, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if gaji.Valid {
+			p.GajiRange = &gaji.String
+		}
+		if tanggalSelesai.Valid {
+			p.TanggalSelesaiKerja = &tanggalSelesai.Time
+		}
+		if deskripsi.Valid {
+			p.DeskripsiPekerjaan = &deskripsi.String
+		}
+		list = append(list, p)
+	}
+	return list, nil
+}
+
+func (r *PekerjaanRepository) Count(search string) (int, error) {
+	var total int
+	err := r.DB.QueryRow(`
+		SELECT COUNT(*) 
+		FROM pekerjaan_alumni
+		WHERE nama_perusahaan ILIKE $1 OR posisi_jabatan ILIKE $1 OR bidang_industri ILIKE $1
+	`, "%"+search+"%").Scan(&total)
+	return total, err
+}

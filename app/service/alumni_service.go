@@ -1,9 +1,10 @@
 package service
 
 import (
+	"errors"
+	"strings"
 	"golanjutan/app/model"
 	"golanjutan/app/repository"
-	"errors"
 )
 
 type AlumniService struct {
@@ -39,4 +40,46 @@ func (s *AlumniService) Update(id int, req model.UpdateAlumniRequest) error {
 
 func (s *AlumniService) Delete(id int) error {
 	return s.Repo.Delete(id)
+}
+
+func (s *AlumniService) GetAllWithFilter(page, limit int, sortBy, sortOrder, search string) (model.AlumniResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+
+	// whitelist kolom sort
+	allowedSort := map[string]bool{
+		"id": true, "nim": true, "nama": true, "jurusan": true,
+		"angkatan": true, "tahun_lulus": true, "created_at": true,
+	}
+	if !allowedSort[sortBy] {
+		sortBy = "created_at"
+	}
+	if strings.ToUpper(sortOrder) != "ASC" {
+		sortOrder = "DESC"
+	}
+
+	data, err := s.Repo.GetAllWithFilter(limit, offset, sortBy, sortOrder, search)
+	if err != nil {
+		return model.AlumniResponse{}, err
+	}
+
+	total, err := s.Repo.Count(search)
+	if err != nil {
+		return model.AlumniResponse{}, err
+	}
+
+	return model.AlumniResponse{
+		Data: data,
+		Meta: model.MetaInfo{
+			Page:   page,
+			Limit:  limit,
+			Total:  total,
+			Pages:  (total + limit - 1) / limit,
+			SortBy: sortBy,
+			Order:  sortOrder,
+			Search: search,
+		},
+	}, nil
 }

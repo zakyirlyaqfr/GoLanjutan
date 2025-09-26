@@ -5,6 +5,7 @@ import (
 	"golanjutan/app/repository"
 	"errors"
 	"time"
+	"strings"
 )
 
 type PekerjaanService struct {
@@ -61,4 +62,47 @@ func (s *PekerjaanService) Update(id int, req model.UpdatePekerjaanRequest) erro
 
 func (s *PekerjaanService) Delete(id int) error {
 	return s.Repo.Delete(id)
+}
+
+func (s *PekerjaanService) GetAllWithFilter(page, limit int, sortBy, sortOrder, search string) (model.PekerjaanResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+
+	// whitelist kolom sort
+	allowedSort := map[string]bool{
+		"id": true, "alumni_id": true, "nama_perusahaan": true,
+		"posisi_jabatan": true, "bidang_industri": true,
+		"lokasi_kerja": true, "created_at": true,
+	}
+	if !allowedSort[sortBy] {
+		sortBy = "created_at"
+	}
+	if strings.ToUpper(sortOrder) != "ASC" {
+		sortOrder = "DESC"
+	}
+
+	data, err := s.Repo.GetAllWithFilter(limit, offset, sortBy, sortOrder, search)
+	if err != nil {
+		return model.PekerjaanResponse{}, err
+	}
+
+	total, err := s.Repo.Count(search)
+	if err != nil {
+		return model.PekerjaanResponse{}, err
+	}
+
+	return model.PekerjaanResponse{
+		Data: data,
+		Meta: model.MetaInfo{
+			Page:   page,
+			Limit:  limit,
+			Total:  total,
+			Pages:  (total + limit - 1) / limit,
+			SortBy: sortBy,
+			Order:  sortOrder,
+			Search: search,
+		},
+	}, nil
 }
