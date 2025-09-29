@@ -106,3 +106,33 @@ func (s *PekerjaanService) GetAllWithFilter(page, limit int, sortBy, sortOrder, 
 		},
 	}, nil
 }
+
+
+func (s *PekerjaanService) SoftDeletePekerjaan(userID, pekerjaanID, alumniID int, role string) error {
+	// Admin bisa hapus semua
+	if userID == 1 || role == "admin" {
+		return s.Repo.SoftDelete(pekerjaanID)
+	}
+
+	// User biasa hanya bisa hapus pekerjaan dirinya sendiri
+	if role == "user" {
+		p, err := s.Repo.GetByID(pekerjaanID)
+		if err != nil {
+			return errors.New("pekerjaan tidak ditemukan")
+		}
+		if p.AlumniID != alumniID {
+			return errors.New("tidak bisa hapus pekerjaan orang lain")
+		}
+		return s.Repo.SoftDelete(pekerjaanID)
+	}
+
+	return errors.New("akses ditolak")
+}
+
+func (s *PekerjaanService) RestorePekerjaan(userID, pekerjaanID int) error {
+	// Admin bisa restore
+	if userID == 1 {
+		return s.Repo.Restore(pekerjaanID)
+	}
+	return errors.New("restore hanya bisa dilakukan admin")
+}

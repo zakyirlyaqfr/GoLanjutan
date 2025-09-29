@@ -209,3 +209,21 @@ func (r *PekerjaanRepository) Count(search string) (int, error) {
 	`, "%"+search+"%").Scan(&total)
 	return total, err
 }
+
+func (r *PekerjaanRepository) SoftDelete(id int) error {
+	_, err := r.DB.Exec(`UPDATE pekerjaan_alumni SET deleted_at = NOW() WHERE id = $1`, id)
+	return err
+}
+
+func (r *PekerjaanRepository) Restore(id int) error {
+	_, err := r.DB.Exec(`UPDATE pekerjaan_alumni SET deleted_at = NULL WHERE id = $1`, id)
+	return err
+}
+
+func (r *PekerjaanRepository) GetByIDRow(id int) *sql.Row {
+	return r.DB.QueryRow(`SELECT id, alumni_id FROM pekerjaan_alumni WHERE id = $1`, id)
+}
+
+func (r *PekerjaanRepository) GetActive() (*sql.Rows, error) {
+	return r.DB.Query(`SELECT * FROM pekerjaan_alumni WHERE deleted_at IS NULL`)
+}

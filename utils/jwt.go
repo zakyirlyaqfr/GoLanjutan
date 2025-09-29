@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 	"time"
-
+	"golanjutan/config"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -34,4 +34,9 @@ func VerifyJWT(tokenStr string) (*jwt.Token, error) {
 		}
 		return []byte(jwtSecret), nil
 	})
+}
+
+func GenerateJWTWithClaims(claims jwt.MapClaims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(config.AppEnv.JWTSecret))
 }

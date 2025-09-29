@@ -46,7 +46,7 @@ func Setup(app *fiber.App) {
 	// ============================
 	alumni := api.Group("/alumni", middleware.Cors())
 
-	// FILTER, PAGINATION, SEARCH, SORT (harus didefinisikan duluan)
+	// FILTER, PAGINATION, SEARCH, SORT
 	alumni.Get("/filter", middleware.Protected(), func(c *fiber.Ctx) error {
 		page := c.QueryInt("page", 1)
 		limit := c.QueryInt("limit", 10)
@@ -110,15 +110,24 @@ func Setup(app *fiber.App) {
 		return c.JSON(fiber.Map{"success": true, "data": updated})
 	})
 
-	alumni.Delete("/:id", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
-		id, err := strconv.Atoi(c.Params("id"))
+	alumni.Delete("/:id", middleware.Protected(), func(c *fiber.Ctx) error {
+		userID := c.Locals("user_id").(int)
+		id, _ := strconv.Atoi(c.Params("id"))
+		err := alumniSvc.SoftDeleteAlumni(userID, id)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "error": "id invalid"})
+			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
 		}
-		if err := alumniSvc.Delete(id); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "error": err.Error()})
+		return c.JSON(fiber.Map{"message": "Alumni berhasil di-soft delete"})
+	})
+
+	alumni.Patch("/:id/restore", middleware.Protected(), func(c *fiber.Ctx) error {
+		userID := c.Locals("user_id").(int)
+		id, _ := strconv.Atoi(c.Params("id"))
+		err := alumniSvc.RestoreAlumni(userID, id)
+		if err != nil {
+			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
 		}
-		return c.JSON(fiber.Map{"success": true, "message": "alumni deleted"})
+		return c.JSON(fiber.Map{"message": "Alumni berhasil di-restore"})
 	})
 
 	// ============================
@@ -126,7 +135,7 @@ func Setup(app *fiber.App) {
 	// ============================
 	pekerjaan := api.Group("/pekerjaan", middleware.Cors())
 
-	// FILTER, PAGINATION, SEARCH, SORT (harus didefinisikan duluan)
+	// FILTER, PAGINATION, SEARCH, SORT
 	pekerjaan.Get("/filter", middleware.Protected(), func(c *fiber.Ctx) error {
 		page := c.QueryInt("page", 1)
 		limit := c.QueryInt("limit", 10)
@@ -202,14 +211,30 @@ func Setup(app *fiber.App) {
 		return c.JSON(fiber.Map{"success": true, "data": updated})
 	})
 
-	pekerjaan.Delete("/:id", middleware.Protected(), middleware.RequireRole("admin"), func(c *fiber.Ctx) error {
-		id, err := strconv.Atoi(c.Params("id"))
+	pekerjaan.Delete("/:id", middleware.Protected(), func(c *fiber.Ctx) error {
+		userID := c.Locals("user_id").(int)
+		role := c.Locals("role").(string)
+		id, _ := strconv.Atoi(c.Params("id"))
+
+		// Ambil alumniID dari query (untuk validasi user biasa)
+		alumniID, _ := strconv.Atoi(c.Query("alumni_id", "0"))
+
+		err := pekerjaanSvc.SoftDeletePekerjaan(userID, id, alumniID, role)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "error": "id invalid"})
+			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
 		}
-		if err := pekerjaanSvc.Delete(id); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "error": err.Error()})
-		}
-		return c.JSON(fiber.Map{"success": true, "message": "pekerjaan deleted"})
+		return c.JSON(fiber.Map{"message": "Pekerjaan berhasil di-soft delete"})
 	})
+
+	pekerjaan.Patch("/:id/restore", middleware.Protected(), func(c *fiber.Ctx) error {
+		userID := c.Locals("user_id").(int)
+		id, _ := strconv.Atoi(c.Params("id"))
+
+		err := pekerjaanSvc.RestorePekerjaan(userID, id)
+		if err != nil {
+			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"message": "Pekerjaan berhasil di-restore"})
+	})
+
 }

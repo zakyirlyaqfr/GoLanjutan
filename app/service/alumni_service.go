@@ -83,3 +83,17 @@ func (s *AlumniService) GetAllWithFilter(page, limit int, sortBy, sortOrder, sea
 		},
 	}, nil
 }
+
+func (s *AlumniService) SoftDeleteAlumni(userID, alumniID int) error {
+    if userID != 1 { // admin = id 1
+        return errors.New("hanya admin yang bisa menghapus alumni")
+    }
+    return s.Repo.SoftDelete(alumniID)
+}
+
+func (s *AlumniService) RestoreAlumni(userID, alumniID int) error {
+    if userID != 1 {
+        return errors.New("hanya admin yang bisa restore alumni")
+    }
+    return s.Repo.Restore(alumniID)
+}
