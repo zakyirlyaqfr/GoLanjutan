@@ -24,7 +24,6 @@ func (s *AlumniService) GetByID(id int) (*model.Alumni, error) {
 }
 
 func (s *AlumniService) Create(req model.CreateAlumniRequest) (int, error) {
-	// simple validation
 	if req.NIM == "" || req.Nama == "" || req.Jurusan == "" || req.Email == "" {
 		return 0, errors.New("nim, nama, jurusan, dan email harus diisi")
 	}
@@ -84,16 +83,18 @@ func (s *AlumniService) GetAllWithFilter(page, limit int, sortBy, sortOrder, sea
 	}, nil
 }
 
-func (s *AlumniService) SoftDeleteAlumni(userID, alumniID int) error {
-    if userID != 1 { // admin = id 1
-        return errors.New("hanya admin yang bisa menghapus alumni")
-    }
-    return s.Repo.SoftDelete(alumniID)
+// ✅ hanya superadmin (id=1) yang boleh soft delete alumni
+func (s *AlumniService) SoftDeleteAlumni(user *model.User, alumniID int) error {
+	if user.ID != 1 {
+		return errors.New("hanya superadmin yang bisa menghapus alumni")
+	}
+	return s.Repo.SoftDelete(alumniID)
 }
 
-func (s *AlumniService) RestoreAlumni(userID, alumniID int) error {
-    if userID != 1 {
-        return errors.New("hanya admin yang bisa restore alumni")
-    }
-    return s.Repo.Restore(alumniID)
+// ✅ hanya superadmin (id=1) yang boleh restore alumni
+func (s *AlumniService) RestoreAlumni(user *model.User, alumniID int) error {
+	if user.ID != 1 {
+		return errors.New("hanya superadmin yang bisa restore alumni")
+	}
+	return s.Repo.Restore(alumniID)
 }

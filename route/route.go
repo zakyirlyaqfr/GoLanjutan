@@ -23,12 +23,45 @@ func Setup(app *fiber.App) {
 	// services
 	alumniSvc := service.NewAlumniService(alumniRepo)
 	pekerjaanSvc := service.NewPekerjaanService(pekerjaanRepo)
-	authService := service.NewAuthService(*userRepo)
+	authService := service.NewAuthService(userRepo, alumniRepo)
 
 	// ============================
 	// AUTH ROUTES
 	// ============================
 	auth := api.Group("/auth")
+
+	auth.Post("/register", func(c *fiber.Ctx) error {
+		var req struct {
+			Username   string `json:"username"`
+			Password   string `json:"password"`
+			Role       string `json:"role"`
+			NIM        string `json:"nim"`
+			Nama       string `json:"nama"`
+			Jurusan    string `json:"jurusan"`
+			Angkatan   int    `json:"angkatan"`
+			TahunLulus int    `json:"tahun_lulus"`
+			Email      string `json:"email"`
+			NoTelepon  string `json:"no_telepon"`
+			Alamat     string `json:"alamat"`
+		}
+
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		}
+
+		user, err := authService.Register(
+			req.Username, req.Password, req.Role,
+			req.NIM, req.Nama, req.Jurusan,
+			req.Angkatan, req.TahunLulus,
+			req.Email, req.NoTelepon, req.Alamat,
+		)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "data": user})
+	})
+
 	auth.Post("/login", func(c *fiber.Ctx) error {
 		var req model.LoginRequest
 		if err := c.BodyParser(&req); err != nil {
@@ -46,7 +79,6 @@ func Setup(app *fiber.App) {
 	// ============================
 	alumni := api.Group("/alumni", middleware.Cors())
 
-	// FILTER, PAGINATION, SEARCH, SORT
 	alumni.Get("/filter", middleware.Protected(), func(c *fiber.Ctx) error {
 		page := c.QueryInt("page", 1)
 		limit := c.QueryInt("limit", 10)
@@ -110,10 +142,18 @@ func Setup(app *fiber.App) {
 		return c.JSON(fiber.Map{"success": true, "data": updated})
 	})
 
-	alumni.Delete("/:id", middleware.Protected(), func(c *fiber.Ctx) error {
+		alumni.Delete("/:id", middleware.Protected(), func(c *fiber.Ctx) error {
 		userID := c.Locals("user_id").(int)
 		id, _ := strconv.Atoi(c.Params("id"))
-		err := alumniSvc.SoftDeleteAlumni(userID, id)
+
+		// Ambil user dari DB
+		user, err := userRepo.GetByID(userID)
+		if err != nil {
+			return c.Status(403).JSON(fiber.Map{"error": "user tidak ditemukan"})
+		}
+
+		// Hanya superadmin (id=1) bisa hapus alumni → validasi ada di service
+		err = alumniSvc.SoftDeleteAlumni(user, id)
 		if err != nil {
 			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
 		}
@@ -123,19 +163,27 @@ func Setup(app *fiber.App) {
 	alumni.Patch("/:id/restore", middleware.Protected(), func(c *fiber.Ctx) error {
 		userID := c.Locals("user_id").(int)
 		id, _ := strconv.Atoi(c.Params("id"))
-		err := alumniSvc.RestoreAlumni(userID, id)
+
+		// Ambil user dari DB
+		user, err := userRepo.GetByID(userID)
+		if err != nil {
+			return c.Status(403).JSON(fiber.Map{"error": "user tidak ditemukan"})
+		}
+
+		// Hanya superadmin (id=1) bisa restore alumni → validasi ada di service
+		err = alumniSvc.RestoreAlumni(user, id)
 		if err != nil {
 			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(fiber.Map{"message": "Alumni berhasil di-restore"})
 	})
 
+
 	// ============================
 	// PEKERJAAN ROUTES
 	// ============================
 	pekerjaan := api.Group("/pekerjaan", middleware.Cors())
 
-	// FILTER, PAGINATION, SEARCH, SORT
 	pekerjaan.Get("/filter", middleware.Protected(), func(c *fiber.Ctx) error {
 		page := c.QueryInt("page", 1)
 		limit := c.QueryInt("limit", 10)
@@ -216,10 +264,19 @@ func Setup(app *fiber.App) {
 		role := c.Locals("role").(string)
 		id, _ := strconv.Atoi(c.Params("id"))
 
-		// Ambil alumniID dari query (untuk validasi user biasa)
-		alumniID, _ := strconv.Atoi(c.Query("alumni_id", "0"))
+		// Ambil user dari DB untuk dapat AlumniID
+		user, err := userRepo.GetByID(userID)
+		if err != nil {
+			return c.Status(403).JSON(fiber.Map{"error": "user tidak ditemukan"})
+		}
 
-		err := pekerjaanSvc.SoftDeletePekerjaan(userID, id, alumniID, role)
+		var alumniID int
+		if user.AlumniID != nil {
+			alumniID = *user.AlumniID
+		} else {
+			alumniID = 0 // atau sesuaikan defaultnya
+		}
+		err = pekerjaanSvc.SoftDeletePekerjaan(userID, id, alumniID, role)
 		if err != nil {
 			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
 		}
@@ -228,13 +285,26 @@ func Setup(app *fiber.App) {
 
 	pekerjaan.Patch("/:id/restore", middleware.Protected(), func(c *fiber.Ctx) error {
 		userID := c.Locals("user_id").(int)
+		role := c.Locals("role").(string)
 		id, _ := strconv.Atoi(c.Params("id"))
 
-		err := pekerjaanSvc.RestorePekerjaan(userID, id)
+		// Ambil user dari DB untuk dapat AlumniID
+		user, err := userRepo.GetByID(userID)
+		if err != nil {
+			return c.Status(403).JSON(fiber.Map{"error": "user tidak ditemukan"})
+		}
+
+		var alumniID int
+		if user.AlumniID != nil {
+			alumniID = *user.AlumniID
+		} else {
+			alumniID = 0 // atau sesuaikan defaultnya
+		}
+
+		err = pekerjaanSvc.RestorePekerjaan(userID, id, alumniID, role)
 		if err != nil {
 			return c.Status(403).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(fiber.Map{"message": "Pekerjaan berhasil di-restore"})
 	})
-
 }

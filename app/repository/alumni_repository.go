@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"golanjutan/app/model"
 	"database/sql"
+	"golanjutan/app/model"
 	"time"
 )
 
@@ -18,6 +18,7 @@ func (r *AlumniRepository) GetAll() ([]model.Alumni, error) {
 	rows, err := r.DB.Query(`
 		SELECT id, nim, nama, jurusan, angkatan, tahun_lulus, email, no_telepon, alamat, created_at, updated_at
 		FROM alumni
+		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 	`)
 	if err != nil {
@@ -48,7 +49,7 @@ func (r *AlumniRepository) GetByID(id int) (*model.Alumni, error) {
 	row := r.DB.QueryRow(`
 		SELECT id, nim, nama, jurusan, angkatan, tahun_lulus, email, no_telepon, alamat, created_at, updated_at
 		FROM alumni
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`, id)
 
 	var a model.Alumni
@@ -135,54 +136,56 @@ func (r *AlumniRepository) Count(search string) (int, error) {
 }
 
 func (r *AlumniRepository) SoftDelete(id int) error {
-    // soft delete alumni
-    _, err := r.DB.Exec(`UPDATE alumni SET deleted_at = NOW() WHERE id = $1`, id)
-    if err != nil {
-        return err
-    }
-    // cascade ke pekerjaan_alumni
-    _, err = r.DB.Exec(`UPDATE pekerjaan_alumni SET deleted_at = NOW() WHERE alumni_id = $1`, id)
-    return err
+	// soft delete alumni
+	_, err := r.DB.Exec(`UPDATE alumni SET deleted_at = NOW() WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+
+	// soft delete pekerjaan terkait
+	_, err = r.DB.Exec(`UPDATE pekerjaan_alumni SET deleted_at = NOW() WHERE alumni_id = $1`, id)
+	return err
 }
 
 func (r *AlumniRepository) Restore(id int) error {
-    // restore alumni
-    _, err := r.DB.Exec(`UPDATE alumni SET deleted_at = NULL WHERE id = $1`, id)
-    if err != nil {
-        return err
-    }
-    // restore pekerjaan_alumni
-    _, err = r.DB.Exec(`UPDATE pekerjaan_alumni SET deleted_at = NULL WHERE alumni_id = $1`, id)
-    return err
+	// restore alumni
+	_, err := r.DB.Exec(`UPDATE alumni SET deleted_at = NULL WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+
+	// restore pekerjaan terkait
+	_, err = r.DB.Exec(`UPDATE pekerjaan_alumni SET deleted_at = NULL WHERE alumni_id = $1`, id)
+	return err
 }
 
 func (r *AlumniRepository) GetAllActive() ([]model.Alumni, error) {
-    rows, err := r.DB.Query(`
+	rows, err := r.DB.Query(`
         SELECT id, nim, nama, jurusan, angkatan, tahun_lulus, email, no_telepon, alamat, created_at, updated_at
         FROM alumni
         WHERE deleted_at IS NULL
         ORDER BY created_at DESC
     `)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    var list []model.Alumni
-    for rows.Next() {
-        var a model.Alumni
-        var noTel, alamat sql.NullString
-        if err := rows.Scan(&a.ID, &a.NIM, &a.Nama, &a.Jurusan, &a.Angkatan,
-            &a.TahunLulus, &a.Email, &noTel, &alamat, &a.CreatedAt, &a.UpdatedAt); err != nil {
-            return nil, err
-        }
-        if noTel.Valid {
-            a.NoTelepon = &noTel.String
-        }
-        if alamat.Valid {
-            a.Alamat = &alamat.String
-        }
-        list = append(list, a)
-    }
-    return list, nil
+	var list []model.Alumni
+	for rows.Next() {
+		var a model.Alumni
+		var noTel, alamat sql.NullString
+		if err := rows.Scan(&a.ID, &a.NIM, &a.Nama, &a.Jurusan, &a.Angkatan,
+			&a.TahunLulus, &a.Email, &noTel, &alamat, &a.CreatedAt, &a.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if noTel.Valid {
+			a.NoTelepon = &noTel.String
+		}
+		if alamat.Valid {
+			a.Alamat = &alamat.String
+		}
+		list = append(list, a)
+	}
+	return list, nil
 }

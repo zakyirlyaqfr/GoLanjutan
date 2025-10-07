@@ -9,15 +9,18 @@ import (
 	"golanjutan/utils"
 
 	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	UserRepo repository.UserRepository
+	UserRepo   repository.UserRepository
+	AlumniRepo repository.AlumniRepository
 }
 
-func NewAuthService(repo repository.UserRepository) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, alumniRepo *repository.AlumniRepository) *AuthService {
 	return &AuthService{
-		UserRepo: repo,
+		UserRepo:   *userRepo,
+		AlumniRepo: *alumniRepo,
 	}
 }
 
@@ -51,11 +54,41 @@ func (s *AuthService) Login(username, password string) (*model.LoginResponse, er
 	}, nil
 }
 
-func (s *AuthService) Register(username, password, role string) error {
-	hashed, err := utils.HashPassword(password)
+func (s *AuthService) Register(username, password, role, nim, nama, jurusan string, angkatan int, tahunLulus int, email, noTelepon, alamat string) (*model.User, error) {
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = s.UserRepo.Create(username, hashed, role)
-	return err
+
+	// Step 1: Insert User
+	user, err := s.UserRepo.Create(username, string(hashedPassword), role)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Insert Alumni
+	alumniReq := model.CreateAlumniRequest{
+		NIM:        nim,
+		Nama:       nama,
+		Jurusan:    jurusan,
+		Angkatan:   angkatan,
+		TahunLulus: tahunLulus,
+		Email:      email,
+		NoTelepon:  &noTelepon, // pakai pointer
+		Alamat:     &alamat,    // pakai pointer
+	}
+
+	alumniID, err := s.AlumniRepo.Create(alumniReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3: Update User → set alumni_id
+	user.AlumniID = &alumniID
+	if err := s.UserRepo.Update(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

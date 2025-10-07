@@ -1,11 +1,11 @@
 package service
 
 import (
+	"errors"
 	"golanjutan/app/model"
 	"golanjutan/app/repository"
-	"errors"
-	"time"
 	"strings"
+	"time"
 )
 
 type PekerjaanService struct {
@@ -13,7 +13,7 @@ type PekerjaanService struct {
 }
 
 func NewPekerjaanService(repo *repository.PekerjaanRepository) *PekerjaanService {
-    return &PekerjaanService{Repo: repo}
+	return &PekerjaanService{Repo: repo}
 }
 
 func (s *PekerjaanService) GetAll() ([]model.PekerjaanAlumni, error) {
@@ -29,19 +29,25 @@ func (s *PekerjaanService) GetByAlumniID(alumniID int) ([]model.PekerjaanAlumni,
 }
 
 func (s *PekerjaanService) Create(req model.CreatePekerjaanRequest) (int, error) {
-	// minimal validation: tanggal valid
-	if req.AlumniID == 0 || req.NamaPerusahaan == "" || req.PosisiJabatan == "" || req.BidangIndustri == "" || req.LokasiKerja == "" || req.TanggalMulaiKerja == "" {
+	// minimal validation: field wajib
+	if req.AlumniID == 0 || req.NamaPerusahaan == "" || req.PosisiJabatan == "" ||
+		req.BidangIndustri == "" || req.LokasiKerja == "" || req.TanggalMulaiKerja == "" {
 		return 0, errors.New("field required tidak lengkap")
 	}
-	// validate date format
+
+	// validasi format tanggal mulai
 	if _, err := time.Parse("2006-01-02", req.TanggalMulaiKerja); err != nil {
 		return 0, errors.New("tanggal_mulai_kerja harus dalam format YYYY-MM-DD")
 	}
+
+	// validasi tanggal selesai (kalau ada)
 	if req.TanggalSelesaiKerja != nil && *req.TanggalSelesaiKerja != "" {
 		if _, err := time.Parse("2006-01-02", *req.TanggalSelesaiKerja); err != nil {
 			return 0, errors.New("tanggal_selesai_kerja harus dalam format YYYY-MM-DD")
 		}
 	}
+
+	// lempar ke repository untuk insert
 	return s.Repo.Create(req)
 }
 
@@ -107,10 +113,11 @@ func (s *PekerjaanService) GetAllWithFilter(page, limit int, sortBy, sortOrder, 
 	}, nil
 }
 
-
 func (s *PekerjaanService) SoftDeletePekerjaan(userID, pekerjaanID, alumniID int, role string) error {
+	role = strings.ToLower(role)
+
 	// Admin bisa hapus semua
-	if userID == 1 || role == "admin" {
+	if role == "admin" {
 		return s.Repo.SoftDelete(pekerjaanID)
 	}
 
@@ -129,10 +136,29 @@ func (s *PekerjaanService) SoftDeletePekerjaan(userID, pekerjaanID, alumniID int
 	return errors.New("akses ditolak")
 }
 
-func (s *PekerjaanService) RestorePekerjaan(userID, pekerjaanID int) error {
-	// Admin bisa restore
-	if userID == 1 {
+func (s *PekerjaanService) RestorePekerjaan(userID, pekerjaanID, alumniID int, role string) error {
+	role = strings.ToLower(role)
+
+	// Admin bisa restore semua pekerjaan (termasuk soft delete)
+	if role == "admin" {
+		_, err := s.Repo.GetByIDIncludeDeleted(pekerjaanID)
+		if err != nil {
+			return errors.New("pekerjaan tidak ditemukan")
+		}
 		return s.Repo.Restore(pekerjaanID)
 	}
-	return errors.New("restore hanya bisa dilakukan admin")
+
+	// User hanya bisa restore pekerjaan miliknya sendiri
+	if role == "user" {
+		p, err := s.Repo.GetByIDIncludeDeleted(pekerjaanID)
+		if err != nil {
+			return errors.New("pekerjaan tidak ditemukan")
+		}
+		if p.AlumniID != alumniID {
+			return errors.New("tidak bisa restore pekerjaan orang lain")
+		}
+		return s.Repo.Restore(pekerjaanID)
+	}
+
+	return errors.New("akses ditolak")
 }
