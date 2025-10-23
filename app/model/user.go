@@ -20,6 +20,20 @@ Username string `json:"username"`
 Password string `json:"password"`
 }
 
+type RegisterRequest struct {
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	Role       string `json:"role"`
+	NIM        string `json:"nim"`
+	Nama       string `json:"nama"`
+	Jurusan    string `json:"jurusan"`
+	Angkatan   int    `json:"angkatan"`
+	TahunLulus int    `json:"tahun_lulus"`
+	Email      string `json:"email"`
+	NoTelepon  string `json:"no_telepon"`
+	Alamat     string `json:"alamat"`
+}
+
 type LoginResponse struct {
     Token string `json:"token"`
     User  User   `json:"user"`

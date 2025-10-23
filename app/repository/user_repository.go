@@ -21,10 +21,8 @@ WHERE username=$1
 `, username)
 
 	var u model.User
-	if err := row.Scan(&u.ID, &u.Username, &u.Password, &u.Role, &u.AlumniID, &u.CreatedAt, &u.UpdatedAt); err != nil {
-		return nil, err
-	}
-	return &u, nil
+	err := row.Scan(&u.ID, &u.Username, &u.Password, &u.Role, &u.AlumniID, &u.CreatedAt, &u.UpdatedAt)
+	return &u, err
 }
 
 func (r *UserRepository) GetByID(id int) (*model.User, error) {

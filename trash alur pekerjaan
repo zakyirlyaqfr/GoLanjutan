@@ -1,0 +1,57 @@
+; // ==================== 1️⃣1️⃣ CREATE PEKERJAAN (ADMIN ONLY) ====================
+; // Menambahkan data pekerjaan untuk alumni tertentu
+
+; POST /api/pekerjaan/
+; {
+;   "alumni_id": 1,
+;   "nama_perusahaan": "PT Inovasi Digital",
+;   "posisi_jabatan": "Backend Engineer",
+;   "bidang_industri": "Teknologi Informasi",
+;   "lokasi_kerja": "Jakarta",
+;   "gaji_range": "Rp8.000.000 - Rp12.000.000",
+;   "tanggal_mulai_kerja": "2025-02-01",
+;   "status_pekerjaan": "Bekerja",
+;   "deskripsi_pekerjaan": "Mengembangkan sistem berbasis Go dan PostgreSQL."
+; }
+
+; // ==================== 1️⃣2️⃣ GET ALL PEKERJAAN ====================
+; // Menampilkan semua pekerjaan
+
+; GET /api/pekerjaan/
+
+; // ==================== 1️⃣3️⃣ GET ALL PEKERJAAN (FILTER + SORT + SEARCH) ====================
+
+; GET /api/pekerjaan/filter?page=1&limit=5&sortBy=nama_perusahaan&sortOrder=ASC&search=Digital
+
+; GET /api/pekerjaan/filter?page=1&limit=3&sortBy=gaji_range&sortOrder=DESC&search=Engineer
+
+; // ==================== 1️⃣4️⃣ GET PEKERJAAN BY ID ====================
+
+; GET /api/pekerjaan/1
+
+; // ==================== 1️⃣5️⃣ GET PEKERJAAN BY ALUMNI ====================
+; // Menampilkan semua pekerjaan milik alumni tertentu
+
+; GET /api/pekerjaan/alumni/1
+
+; // ==================== 1️⃣6️⃣ UPDATE PEKERJAAN (ADMIN ONLY) ====================
+
+; PUT /api/pekerjaan/1
+; {
+;   "nama_perusahaan": "PT Inovasi Nusantara",
+;   "posisi_jabatan": "Senior Backend Engineer",
+;   "bidang_industri": "Teknologi",
+;   "lokasi_kerja": "Jakarta",
+;   "gaji_range": "Rp10.000.000 - Rp15.000.000",
+;   "tanggal_mulai_kerja": "2025-02-01",
+;   "status_pekerjaan": "Bekerja",
+;   "deskripsi_pekerjaan": "Memimpin tim pengembangan aplikasi Go berbasis microservice."
+; }
+
+; // ==================== 1️⃣7️⃣ DELETE (SOFT DELETE) PEKERJAAN ====================
+
+; DELETE /api/pekerjaan/1
+
+; // ==================== 1️⃣8️⃣ RESTORE PEKERJAAN ====================
+
+; PATCH /api/pekerjaan/1/restore

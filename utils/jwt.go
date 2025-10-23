@@ -9,6 +9,7 @@ import (
 
 var jwtSecret string
 
+// InitJWT menginisialisasi secret key
 func InitJWT(secret string) {
 	jwtSecret = secret
 }
@@ -19,13 +20,16 @@ func GenerateJWTWithClaims(claims jwt.MapClaims) (string, error) {
 	return token.SignedString([]byte(jwtSecret))
 }
 
+// GenerateJWT membuat token JWT dengan payload lengkap
 func GenerateJWT(userID int, alumniID *int, username, role string, expiry time.Duration) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id":   userID,
-		"username":  username,
-		"role":      role,
-		"exp":       time.Now().Add(expiry).Unix(),
+		"user_id":  userID,
+		"username": username,
+		"role":     role,
+		"exp":      time.Now().Add(expiry).Unix(),
+		"iat":      time.Now().Unix(),
 	}
+
 	if alumniID != nil {
 		claims["alumni_id"] = *alumniID
 	}
@@ -34,20 +38,22 @@ func GenerateJWT(userID int, alumniID *int, username, role string, expiry time.D
 	return token.SignedString([]byte(jwtSecret))
 }
 
-func VerifyJWT(tokenStr string) (*jwt.Token, jwt.MapClaims, error) {
-	t, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+// VerifyJWT memverifikasi token JWT dan mengembalikan claims
+func VerifyJWT(tokenStr string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
 		return []byte(jwtSecret), nil
 	})
-	if err != nil {
-		return nil, nil, err
+	if err != nil || !token.Valid {
+		return nil, fmt.Errorf("invalid or expired token")
 	}
 
-	claims, ok := t.Claims.(jwt.MapClaims)
-	if !ok || !t.Valid {
-		return nil, nil, fmt.Errorf("invalid token claims")
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid token claims")
 	}
-	return t, claims, nil
+
+	return claims, nil
 }

@@ -1,0 +1,81 @@
+
+// // ==================== 2️⃣ REGISTER (User Alumni) ====================
+// // Membuat akun user (alumni) baru sekaligus menambah data alumni
+
+// // POST /api/auth/register
+// {
+//   "username": "siti123",
+//   "password": "userpass",
+//   "role": "user",
+//   "nim": "U20220001",
+//   "nama": "Siti Rahmawati",
+//   "jurusan": "Sistem Informasi",
+//   "angkatan": 2022,
+//   "tahun_lulus": 2026,
+//   "email": "siti.user@example.com",
+//   "no_telepon": "082198765432",
+//   "alamat": "Jl. Diponegoro No. 7, Sidoarjo"
+// }
+
+// // ==================== 3️⃣ LOGIN ====================
+// // Semua user bisa login (admin maupun user)
+// // Gunakan token JWT dari response untuk endpoint selanjutnya
+
+// POST /api/auth/login
+// {
+//   "username": "admin123",
+//   "password": "adminpass"
+// }
+
+// // ==================== 4️⃣ GET ALL ALUMNI ====================
+// // Menampilkan semua alumni
+
+// GET /api/alumni/
+
+// // ==================== 5️⃣ GET ALL ALUMNI (FILTER + SORT + SEARCH + PAGINATION) ====================
+// // Menampilkan alumni dengan kombinasi query
+
+// GET /api/alumni/filter?page=1&limit=5&sortBy=nama&sortOrder=ASC&search=Andi
+// GET /api/alumni/filter?page=2&limit=10&sortBy=angkatan&sortOrder=DESC&search=Teknik
+
+
+// // ==================== 6️⃣ GET ALUMNI BY ID ====================
+
+// GET /api/alumni/1
+
+// // ==================== 7️⃣ CREATE ALUMNI (ADMIN ONLY) ====================
+// // Menambahkan data alumni baru tanpa register user
+
+// POST /api/alumni/
+// {
+//   "nim": "A20220002",
+//   "nama": "Rizky Hidayat",
+//   "jurusan": "Teknik Komputer",
+//   "angkatan": 2022,
+//   "tahun_lulus": 2026,
+//   "email": "rizky.hidayat@example.com",
+//   "no_telepon": "081356789012",
+//   "alamat": "Jl. Majapahit No. 12, Malang"
+// }
+
+// // ==================== 8️⃣ UPDATE ALUMNI (ADMIN ONLY) ====================
+// // Mengubah data alumni
+
+// PUT /api/alumni/2
+// {
+//   "nama": "Rizky Hidayatullah",
+//   "jurusan": "Teknik Komputer",
+//   "angkatan": 2022,
+//   "tahun_lulus": 2026,
+//   "email": "rizky.hidayatullah@example.com",
+//   "no_telepon": "081398745612",
+//   "alamat": "Jl. Majapahit No. 99, Malang"
+// }
+
+// // ==================== 9️⃣ DELETE (SOFT DELETE) ALUMNI (SUPERADMIN ONLY) ====================
+
+// DELETE /api/alumni/2
+
+// // ==================== 🔟 RESTORE ALUMNI (SUPERADMIN ONLY) ====================
+
+// PATCH /api/alumni/2/restore
