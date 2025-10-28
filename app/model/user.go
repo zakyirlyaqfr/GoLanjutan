@@ -1,23 +1,28 @@
 package model
 
+import (
+	"time"
 
-import "time"
-
+	// "go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type User struct {
-	ID        int        `json:"id"`
-	Username  string     `json:"user"`
-	Password  string     `json:"-"`
-	Role      string     `json:"role"`
-	AlumniID  *int       `json:"alumni_id,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	ID        int64      `bson:"_id" json:"id"`                                // Diubah
+	Username  string     `bson:"username" json:"user"`
+	Password  string     `bson:"password" json:"-"`
+	Role      string     `bson:"role" json:"role"`
+	AlumniID  *int64     `bson:"alumni_id,omitempty" json:"alumni_id,omitempty"` // Diubah
+	CreatedAt time.Time  `bson:"created_at" json:"created_at"`
+	UpdatedAt time.Time  `bson:"updated_at" json:"updated_at"`
+	DeletedAt *time.Time `bson:"deleted_at,omitempty" json:"deleted_at,omitempty"`
 }
 
+// Request struct (LoginRequest, RegisterRequest, LoginResponse) tidak perlu tag bson
+// ... (sisa file user.go tidak berubah) ...
+
 type LoginRequest struct {
-Username string `json:"username"`
-Password string `json:"password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type RegisterRequest struct {
@@ -35,7 +40,7 @@ type RegisterRequest struct {
 }
 
 type LoginResponse struct {
-    Token string `json:"token"`
-    User  User   `json:"user"`
-	 Role     string `json:"role"`
+	Token string `json:"token"`
+	User  User   `json:"user"`
+	Role  string `json:"role"`
 }

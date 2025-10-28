@@ -1,19 +1,28 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"golanjutan/app/model"
 	"golanjutan/app/repository"
+	"strconv" // DITAMBAHKAN
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	// "go.mongodb.org/mongo-driver/bson/primitive" // DIHAPUS
 )
 
-type TrashService struct {
-	AlumniRepo    *repository.AlumniRepository
-	PekerjaanRepo *repository.PekerjaanRepository
+// Helper context
+func getTrashCtx() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 10*time.Second)
 }
 
-func NewTrashService(alumniRepo *repository.AlumniRepository, pekerjaanRepo *repository.PekerjaanRepository) *TrashService {
+type TrashService struct {
+	AlumniRepo    repository.IAlumniRepository
+	PekerjaanRepo repository.IPekerjaanRepository
+}
+
+func NewTrashService(alumniRepo repository.IAlumniRepository, pekerjaanRepo repository.IPekerjaanRepository) *TrashService {
 	return &TrashService{
 		AlumniRepo:    alumniRepo,
 		PekerjaanRepo: pekerjaanRepo,
@@ -23,12 +32,15 @@ func NewTrashService(alumniRepo *repository.AlumniRepository, pekerjaanRepo *rep
 // ==================== HANDLER (from routes) ====================
 
 func (s *TrashService) HandleGetTrash(c *fiber.Ctx) error {
-	user, err := s.getUserFromContext(c) // Menggunakan helper
+	user, err := s.getUserFromContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	data, err := s.GetTrash(user.Role, user.AlumniID)
+	ctx, cancel := getTrashCtx()
+	defer cancel()
+	// user.AlumniID sekarang *int64
+	data, err := s.GetTrash(ctx, user.Role, user.AlumniID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -41,13 +53,14 @@ func (s *TrashService) HandleGetTrash(c *fiber.Ctx) error {
 
 // ==================== SERVICE LOGIC ====================
 
-func (s *TrashService) GetTrash(role string, alumniID *int) (map[string]interface{}, error) {
+// DIUBAH: Tanda tangan fungsi menerima *int64
+func (s *TrashService) GetTrash(ctx context.Context, role string, alumniID *int64) (map[string]interface{}, error) {
 	if role == "admin" {
-		alumni, err := s.AlumniRepo.GetTrashed()
+		alumni, err := s.AlumniRepo.GetTrashed(ctx)
 		if err != nil {
 			return nil, err
 		}
-		pekerjaan, err := s.PekerjaanRepo.GetTrashed()
+		pekerjaan, err := s.PekerjaanRepo.GetTrashed(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -60,12 +73,13 @@ func (s *TrashService) GetTrash(role string, alumniID *int) (map[string]interfac
 	// role user
 	if alumniID == nil {
 		return map[string]interface{}{
-			// "alumni":    []model.Alumni{}, // User tidak bisa melihat trash alumni
 			"pekerjaan": []model.PekerjaanAlumni{},
 		}, nil
 	}
 
-	pekerjaan, err := s.PekerjaanRepo.GetTrashedByAlumniID(*alumniID)
+	// DIUBAH: Konversi *int64 ke string untuk dikirim ke repo
+	alumniIDString := strconv.FormatInt(*alumniID, 10)
+	pekerjaan, err := s.PekerjaanRepo.GetTrashedByAlumniID(ctx, alumniIDString)
 	if err != nil {
 		return nil, err
 	}

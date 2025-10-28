@@ -8,11 +8,12 @@ import (
 )
 
 type Env struct {
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
+	// DBHost     string // Tidak dipakai
+	// DBPort     string // Tidak dipakai
+	// DBUser     string // Tidak dipakai
+	// DBPassword string // Tidak dipakai
 	DBName     string
+	MongoURI   string
 	ServerPort string
 	JWTSecret  string
 }
@@ -25,11 +26,8 @@ func LoadEnv() {
 	}
 
 	AppEnv = &Env{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "password"),
-		DBName:     getEnv("DB_NAME", "dbminggu4"),
+		MongoURI:   getEnv("MONGODB_URI", "mongodb://localhost:27017"),
+		DBName:     getEnv("DB_NAME", "dbgolanjutan"),
 		ServerPort: getEnv("SERVER_PORT", "3000"),
 		JWTSecret:  getEnv("JWT_SECRET", "golanjutan"),
 	}

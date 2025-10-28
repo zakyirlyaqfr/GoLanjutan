@@ -1,0 +1,17 @@
+input manual admin :
+db.users.insertOne({
+  _id: NumberLong(1),
+  username: "admin",
+  password: "$2y$10$vNeq.aKWCOC3diwoJpq87ORxl9qKV/mnAQZPPWUHxyzBeRXzP.jSC",
+  role: "admin",
+  alumni_id: null,
+  created_at: new Date(),
+  updated_at: new Date()
+});
+
+hapus semua isi data :
+hapus manual saja lalu >
+db.counters.deleteMany({});
+
+db.counters.deleteOne({ "_id": "alumni_id" })
+db.counters.insertOne({ "_id": "alumni_id", "seq": 0 })

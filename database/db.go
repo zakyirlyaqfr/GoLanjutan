@@ -1,45 +1,46 @@
 package database
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"golanjutan/config"
 
-	_ "github.com/lib/pq"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DB *sql.DB
+var DB *mongo.Database
+var Client *mongo.Client // Menyimpan client untuk session (transaksi)
 
 func Connect() {
 	cfg := config.AppEnv
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName)
+	mongoURI := cfg.MongoURI
+	dbName := cfg.DBName
+
+	clientOptions := options.Client().ApplyURI(mongoURI)
+
+	// Membuat konteks dengan batas waktu
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	var err error
-	DB, err = sql.Open("postgres", dsn)
+	Client, err = mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		log.Fatalf("failed open db: %v", err)
+		log.Fatalf("Koneksi ke MongoDB gagal: %v", err)
 	}
 
-	if err = DB.Ping(); err != nil {
-		log.Fatalf("failed ping db: %v", err)
+	// Cek koneksi (Ping)
+	err = Client.Ping(ctx, nil)
+	if err != nil {
+		log.Fatalf("Ping ke MongoDB gagal: %v", err)
 	}
+
+	fmt.Println("Berhasil terhubung ke MongoDB!")
+	DB = Client.Database(dbName)
 }
 
-func ConnectDB() {
-	cfg := config.AppEnv
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName)
-
-	var err error
-	DB, err = sql.Open("postgres", dsn)
-	if err != nil {
-		log.Fatalf("failed open db: %v", err)
-	}
-
-	if err = DB.Ping(); err != nil {
-		log.Fatalf("failed ping db: %v", err)
-	}
-}
+// ConnectDB tidak diperlukan lagi karena Connect() sudah melakukannya
+// func ConnectDB() { ... }

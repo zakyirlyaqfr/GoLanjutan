@@ -2,13 +2,14 @@ package middleware
 
 import (
 	"fmt"
-	"strconv"
+	// "strconv" // Tidak dipakai
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"golanjutan/app/model"
 	"golanjutan/config"
+	// "go.mongodb.org/mongo-driver/bson/primitive" // DIHAPUS
 )
 
 // Protected middleware: memvalidasi JWT & menyimpan info user ke context
@@ -41,49 +42,41 @@ func Protected() fiber.Handler {
 		}
 
 		// --- Ambil data dari claims ---
-		var userID int
-		switch v := claims["user_id"].(type) {
-		case float64:
-			userID = int(v)
-		case string:
-			if i, err := strconv.Atoi(v); err == nil {
-				userID = i
-			}
+
+		// DIUBAH: ID dari JWT adalah angka (float64 by default), bukan string hex
+		userIDFloat, ok := claims["user_id"].(float64)
+		if !ok {
+			return fiber.NewError(fiber.StatusUnauthorized, "Invalid user_id in token (bukan float64)")
 		}
+		userID := int64(userIDFloat) // Konversi ke int64
 
 		role, _ := claims["role"].(string)
 		role = strings.ToLower(role)
 
-		var alumniID *int
-		if aID, ok := claims["alumni_id"]; ok {
-			switch v := aID.(type) {
-			case float64:
-				val := int(v)
-				alumniID = &val
-			case string:
-				if i, err := strconv.Atoi(v); err == nil {
-					alumniID = &i
-				}
-			}
+		var alumniID *int64
+		// DIUBAH: Cek alumni_id sebagai float64
+		if aIDFloat, ok := claims["alumni_id"].(float64); ok {
+			aID := int64(aIDFloat)
+			alumniID = &aID
 		}
 
 		user := &model.User{
-			ID:       userID,
+			ID:       userID, // DIUBAH
 			Role:     role,
-			AlumniID: alumniID,
+			AlumniID: alumniID, // DIUBAH
 		}
 
 		// ✅ Simpan user struct dan field individual di context
 		c.Locals("user", user)
-		c.Locals("user_id", userID)
+		c.Locals("user_id", userID) // Menyimpan int64
 		c.Locals("role", role)
-		c.Locals("alumni_id", alumniID)
+		c.Locals("alumni_id", alumniID) // Menyimpan *int64
 
 		return c.Next()
 	}
 }
 
-// RequireRole memastikan user memiliki role tertentu
+// RequireRole tidak perlu diubah, sudah benar
 func RequireRole(requiredRole string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userData := c.Locals("user")

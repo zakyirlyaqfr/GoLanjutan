@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	// "go.mongodb.org/mongo-driver/bson/primitive" // DIHAPUS
 )
 
 var jwtSecret string
@@ -15,15 +16,17 @@ func InitJWT(secret string) {
 }
 
 // GenerateJWTWithClaims membuat JWT langsung dari MapClaims
+// (Tidak berubah, karena auth_service sudah mengirim int64)
 func GenerateJWTWithClaims(claims jwt.MapClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(jwtSecret))
 }
 
 // GenerateJWT membuat token JWT dengan payload lengkap
-func GenerateJWT(userID int, alumniID *int, username, role string, expiry time.Duration) (string, error) {
+// (Fungsi ini tidak lagi dipakai oleh auth_service, tapi tetap saya perbaiki)
+func GenerateJWT(userID int64, alumniID *int64, username, role string, expiry time.Duration) (string, error) { // DIUBAH
 	claims := jwt.MapClaims{
-		"user_id":  userID,
+		"user_id":  userID, // DIUBAH (bukan .Hex())
 		"username": username,
 		"role":     role,
 		"exp":      time.Now().Add(expiry).Unix(),
@@ -31,7 +34,7 @@ func GenerateJWT(userID int, alumniID *int, username, role string, expiry time.D
 	}
 
 	if alumniID != nil {
-		claims["alumni_id"] = *alumniID
+		claims["alumni_id"] = *alumniID // DIUBAH (bukan .Hex())
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -39,7 +42,9 @@ func GenerateJWT(userID int, alumniID *int, username, role string, expiry time.D
 }
 
 // VerifyJWT memverifikasi token JWT dan mengembalikan claims
+// (Tidak berubah)
 func VerifyJWT(tokenStr string) (jwt.MapClaims, error) {
+	// ... (isi fungsi sama) ...
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
